@@ -1,0 +1,83 @@
+Andreea Prigoreanu
+331CA
+
+                                 Tema 3 APD
+                    -Calcule colaborative in sisteme distribuite-
+
+Continutul arhivei:
+- tema3.c: contine implementarea temei
+- Makefile
+- README
+
+Etapa 1: Stabilirea topologiei
+* Fiecare proces retine topologia in 2 structuri:
+    - clusters_sizes: vector care retine numarul de workeri din fiecare cluster
+        cluster_sizes[rank] = num_workers, rank = coordonator
+    - topology: matrice ce retine rankurile proceselor workers pentru fiecare
+                cluster
+* Prima data, fiecare coordonator isi citeste proprii workers din tabel si
+actualizeaza linia aferenta lui
+* Cu ajutorul functiilor send_data_to_coordinator si recv_data_from_coordinator,
+coordonatorii schimba datele despre un anumit cluster intre ei.
+* Flow-ul schimbului de date este urmatorul
+    - in cazul fara eroare (functia send_topology_to_coordinators_no_error):
+        -> fiecare coordonator trimite vecinilor datele despre clusterul propriu
+        -> pentru a afla datele despre clusterele care nu sunt vecine:
+                0 trimite catre 1 clusterul lui 3
+                1 trimite catre 2 clusterul lui 0
+                2 trimite catre 3 clusterul lui 1
+                3 trimite catre 0 clusterul lui 2
+    - in cazul in care 0 si 1 nu comunica (functia
+    send_topology_to_coordinators_error):
+        -> fiecare coordonator trimite vecinilor cu care poate comunica datele
+        despre clusterul propriu
+        -> pentru a afla datele despre clusterele cu care nu comunica direct:
+                2 trimite catre 3 clusterul lui 1
+                3 trimite catre 2 clusterul lui 0
+                2 trimite catre 1 clusterul lui 3
+                2 trimite catre 1 clusterul lui 0
+                3 trimite catre 0 clusterul lui 1
+                3 trimite catre 0 clusterul lui 2
+* Odata ce ficare coordonator cunoaste topologia, trimite workerilor sai
+propriul rank pentru a-i informa ca le este coordonator si dupa trimite
+linie cu linie topologia (in functia send_topology_to_workers).
+* Cand fiecare proces cunoaste topologia, o afiseaza
+
+Etapa 2: Realizarea calculelor
+* Se calculeaza numarul total de workeri. In medie, fiecare worker va procesa
+n / total_workers elemente din vector. Daca ramane un rest, acesta este
+procesat de ultimul worker care isi primste taskul.
+* Fiecare coordonator imparte taskuri catre proprii workers. Fiecare worker
+primeste de la coordonator exact bucata de vector pe care o are de procesat.
+* Flow-ul este urmatorul:
+    -> coordonatorul 0:
+        - genereaza vectorul initial
+        - trimite bucatile de vector care trebuie procesate catre fiecare worker
+        - primeste bucatile procesate de la workers
+        - trimite vectorul mai departe catre 3 pentru a continua procesarea
+        - primeste inapoi vectorul final de la 3
+        - afiseaza rezultatul
+    -> coordonatorul 3:
+        - primeste vectorul de la coordonatorul 0
+        - trimite bucatile de vector care trebuie procesate catre fiecare worker
+        - primeste bucatile procesate de la workers
+        - trimite vectorul mai departe catre 2 pentru a continua procesarea
+        - primeste inapoi vectorul final de la 2
+    -> coordonatorul 2:
+       - primeste vectorul de la coordonatorul 3
+       - trimite bucatile de vector care trebuie procesate catre fiecare worker
+       - primeste bucatile procesate de la workers
+       - trimite vectorul mai departe catre 1 pentru a continua procesarea
+       - primeste inapoi vectorul final de la 1
+    -> coordonatorul 2:
+       - primeste vectorul de la coordonatorul 2
+       - trimite bucatile de vector care trebuie procesate catre fiecare worker
+         (daca ramane un rest de la impartire, il trimite catre ultimul worker
+            din clusterul sau)
+       - primeste bucatile procesate de la workers
+       - trimite vectorul final inpoi catre 2
+* Ordinea trimiterii vectorului a fost aleasa pentru a rezolva eroarea de la
+etapa 3, cand nu exista comunicare intre 0 si 1.
+
+Etapa 3: Tratarea erorii pe canalul de comunicare
+* A fost rezolvata in cadrul etapelor 1 si 2
